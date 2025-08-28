@@ -185,6 +185,7 @@ html.dark body[data-theme="wine"] {
 }
 
 /* Classic – green primary with orange accent (light mode) */
+html[data-theme="classic"] body,
 body[data-theme="classic"] {
   --c-bg-primary: #f8fff0;
   --c-bg-secondary: #ffffff;
@@ -197,6 +198,7 @@ body[data-theme="classic"] {
   --c-border: #dbe4c7;
   --c-bg-input: #ffffff;
 }
+html.dark[data-theme="classic"] body,
 html.dark body[data-theme="classic"] {
   --c-bg-primary: #12161c;
   --c-bg-secondary: #1a1d23;
@@ -237,6 +239,7 @@ html.dark body[data-theme="graphite"] {
 }
 
 /* Sapphire – deep blues with lighter blue accent */
+html[data-theme="sapphire"] body,
 body[data-theme="sapphire"] {
   --c-bg-primary: #eff6ff;
   --c-bg-secondary: #ffffff;
@@ -249,6 +252,7 @@ body[data-theme="sapphire"] {
   --c-border: #bfdbfe;
   --c-bg-input: #ffffff;
 }
+html.dark[data-theme="sapphire"] body,
 html.dark body[data-theme="sapphire"] {
   --c-bg-primary: #0b1a32;
   --c-bg-secondary: #11223b;

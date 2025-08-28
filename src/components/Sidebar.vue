@@ -32,14 +32,18 @@
 
     <!-- Utilities Section -->
     <SidebarSection class="sidebar__utilities">
-      <SidebarUtility
-        v-for="utility in utilities"
-        :key="utility.id"
-        :icon="utility.icon"
-        :aria-label="utility.ariaLabel"
-        :title="utility.title"
-        @click="utility.action"
-      />
+      <template v-for="utility in utilities" :key="utility.id">
+        <SidebarUtility v-if="utility.slot">
+          <component :is="utility.component" />
+        </SidebarUtility>
+        <SidebarUtility
+          v-else
+          :icon="utility.icon"
+          :aria-label="utility.ariaLabel"
+          :title="utility.title"
+          @click="utility.action"
+        />
+      </template>
     </SidebarSection>
 
     <!-- Collapse Toggle (only visible when expanded) -->
@@ -65,6 +69,8 @@ import SidebarBrand from '@/components/SidebarBrand.vue'
 import SidebarSection from '@/components/SidebarSection.vue'
 import SidebarItem from '@/components/SidebarItem.vue'
 import SidebarUtility from '@/components/SidebarUtility.vue'
+import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
+import ThemeSwitcher from '@/components/ThemeSwitcher.vue'
 
 // State management
 const STORAGE_KEY = 'sidebar:collapsed'
@@ -113,23 +119,6 @@ const isActiveRoute = (to) => route.path === to || route.path.startsWith(to + '/
 const t = langStore.t
 
 // Utility actions
-const switchTheme = () => {
-  const currentTheme = document.documentElement.getAttribute('data-theme') || 'classic'
-  const newTheme = currentTheme === 'classic' ? 'sapphire' : 'classic'
-  document.documentElement.setAttribute('data-theme', newTheme)
-  try {
-    localStorage.setItem('app:theme', newTheme)
-  } catch (error) {
-    console.warn('Failed to save theme to localStorage:', error)
-  }
-}
-
-const switchLanguage = () => {
-  const current = langStore.current
-  const newLang = current === 'en' ? 'ru' : 'en'
-  langStore.setLang(newLang)
-}
-
 const toggleDarkMode = () => {
   themeStore.toggleDarkMode()
 }
@@ -144,21 +133,17 @@ const handleLogout = () => {
   window.location.assign('/')
 }
 
-// Utilities array - exactly 4 utilities, icon-only
+// Utilities array - exactly 4 utilities, some with dropdowns (slotted), others icon-only
 const utilities = computed(() => [
   {
-    id: 'theme',
-    icon: 'palette',
-    ariaLabel: t('switchTheme'),
-    title: t('switchTheme'),
-    action: switchTheme
+    id: 'language',
+    slot: true,
+    component: LanguageSwitcher
   },
   {
-    id: 'language', 
-    icon: 'language',
-    ariaLabel: t('switchLanguage'),
-    title: t('switchLanguage'), 
-    action: switchLanguage
+    id: 'theme',
+    slot: true,
+    component: ThemeSwitcher
   },
   {
     id: 'darkMode',
@@ -198,6 +183,8 @@ const currentLogo = computed(() => {
   --left-gutter: calc(var(--icon-axis-x) - var(--icon-size) / 2); /* 24px */
   --row-height: 48px;
   --row-radius: 12px;
+  --dropdown-gap: 10px;
+  --radius-round: 999px;
   
   /* Theme integration */
   --sidebar-bg: var(--c-bg-sidebar, var(--surface));
@@ -208,6 +195,7 @@ const currentLogo = computed(() => {
   
   /* Layout */
   width: var(--expanded-width);
+  min-width: var(--expanded-width);
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -219,6 +207,7 @@ const currentLogo = computed(() => {
 
 .sidebar--collapsed {
   width: var(--collapsed-width);
+  min-width: var(--collapsed-width);
 }
 
 /* Navigation and Utilities Sections */
@@ -230,6 +219,7 @@ const currentLogo = computed(() => {
 .sidebar__utilities {
   padding: 16px 0 24px 0;
   margin-top: auto;
+  overflow: visible; /* Allow dropdowns to overflow */
 }
 
 /* Collapse Toggle */

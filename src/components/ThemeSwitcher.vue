@@ -1,10 +1,14 @@
 <template>
   <div class="relative" ref="container">
-    <!-- Button to open the theme menu -->
+    <!-- Icon-only trigger button -->
     <button
+      class="icon"
       @click="isOpen = !isOpen"
-      class="h-10 w-10 p-2 rounded-full text-muted flex items-center justify-center transition-colors duration-200 hover:bg-[var(--c-bg-hover)] hover:text-[var(--accent)]"
+      @keydown.escape="close"
       :title="`Current theme: ${currentTheme}`"
+      :aria-expanded="isOpen.toString()"
+      aria-haspopup="menu"
+      aria-label="Theme"
     >
       <span class="material-icons-outlined">palette</span>
     </button>
@@ -20,20 +24,30 @@
     >
       <div
         v-if="isOpen"
-        class="absolute bottom-0 left-full ml-2 w-32 p-2 rounded-xl shadow-lg menu-bg border border-default z-50"
+        class="theme-dropdown"
+        role="menu"
+        @keydown.escape="close"
       >
         <div
-          class="flex items-center px-3 py-2 text-sm font-medium rounded-md cursor-pointer menu-item"
+          class="menu-item"
           :class="{ active: currentTheme === 'classic' }"
           @click="setTheme('classic')"
+          @keydown.enter="setTheme('classic')"
+          @keydown.space.prevent="setTheme('classic')"
+          role="menuitem"
+          tabindex="0"
         >
           Classic
         </div>
 
         <div
-          class="flex items-center px-3 py-2 text-sm font-medium rounded-md cursor-pointer menu-item"
+          class="menu-item"
           :class="{ active: currentTheme === 'sapphire' }"
           @click="setTheme('sapphire')"
+          @keydown.enter="setTheme('sapphire')"
+          @keydown.space.prevent="setTheme('sapphire')"
+          role="menuitem"
+          tabindex="0"
         >
           Sapphire
         </div>
@@ -44,29 +58,50 @@
 
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { useRouter } from 'vue-router'
 
 const isOpen = ref(false)
 const currentTheme = ref('classic')
-
 const container = ref(null)
+const router = useRouter()
+
+const close = () => {
+  isOpen.value = false
+}
+
 const closeOnOutside = (e) => {
   if (container.value && !container.value.contains(e.target)) {
     isOpen.value = false
   }
 }
 
-onMounted(() => {
-  document.addEventListener('click', closeOnOutside)
-  
-  const documentTheme = document.documentElement.getAttribute('data-theme')
-  if (documentTheme === 'classic' || documentTheme === 'sapphire') {
-    currentTheme.value = documentTheme
-  }
+// Close menu on route change
+const unsubscribeRouter = router.afterEach(() => {
+  isOpen.value = false
 })
 
-onBeforeUnmount(() => {
-  document.removeEventListener('click', closeOnOutside)
-})
+// Canonical theme switching logic
+function applyTheme(theme) {
+  if (theme !== 'classic' && theme !== 'sapphire') {
+    theme = 'classic' // fallback
+  }
+  
+  document.documentElement.setAttribute('data-theme', theme)
+  try {
+    localStorage.setItem('app:theme', theme)
+  } catch (error) {
+    console.warn('Failed to save theme to localStorage:', error)
+  }
+  
+  currentTheme.value = theme
+}
+
+function resolveInitialTheme() {
+  const fromDom = document.documentElement.getAttribute('data-theme')
+  const fromStore = localStorage.getItem('app:theme')
+  const candidate = fromDom || fromStore || 'classic'
+  return candidate === 'sapphire' ? 'sapphire' : 'classic'
+}
 
 function setTheme(themeName) {
   if (themeName !== 'classic' && themeName !== 'sapphire') {
@@ -74,35 +109,121 @@ function setTheme(themeName) {
     return
   }
   
-  currentTheme.value = themeName
-  document.documentElement.setAttribute('data-theme', themeName)
-  
-  try {
-    localStorage.setItem('app:theme', themeName)
-  } catch (error) {
-    console.warn('Failed to save theme to localStorage:', error)
-  }
-  
+  applyTheme(themeName)
   isOpen.value = false
   console.log('Theme switched to:', themeName)
 }
+
+onMounted(() => {
+  document.addEventListener('click', closeOnOutside)
+  
+  // Initialize theme on mount
+  const initialTheme = resolveInitialTheme()
+  applyTheme(initialTheme)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', closeOnOutside)
+  unsubscribeRouter()
+})
 </script>
 
 <style scoped>
-.menu-bg {
-  background-color: var(--c-bg-secondary);
+/* Icon-only interactive element */
+.icon {
+  width: var(--icon-size);
+  height: var(--icon-size);
+  display: grid;
+  place-items: center;
+  position: relative;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  color: var(--c-text-muted, var(--text));
+  transition: color 200ms ease;
 }
-.border-default {
-  border-color: var(--c-border);
+
+.icon .material-icons-outlined {
+  font-size: 20px;
+  line-height: 20px;
 }
+
+/* Icon-sized circular hover overlay */
+.icon::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-round, 999px);
+  background: var(--hover-bg);
+  opacity: 0;
+  transition: opacity 150ms ease;
+  pointer-events: none;
+}
+
+.icon:hover::before,
+.icon:focus-visible::before {
+  opacity: 1;
+}
+
+.icon:hover {
+  color: var(--c-text-accent, var(--accent));
+}
+
+/* Focus ring matches icon circle */
+.icon:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-round, 999px);
+}
+
+/* Dropdown menu positioned relative to icon */
+.theme-dropdown {
+  position: absolute;
+  bottom: 0;
+  left: calc(100% + var(--dropdown-gap, 10px));
+  width: 128px;
+  padding: 8px;
+  border-radius: 12px;
+  background: var(--c-bg-secondary);
+  border: 1px solid var(--c-border);
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / .1);
+  z-index: 50;
+}
+
+/* Menu items */
 .menu-item {
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 8px;
+  cursor: pointer;
   color: var(--c-text-primary);
+  transition: background-color 150ms ease, color 150ms ease;
 }
+
 .menu-item:hover {
   background-color: var(--c-bg-hover);
   color: var(--c-text-accent);
 }
+
 .menu-item.active {
   color: var(--c-text-brand);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .icon,
+  .icon::before {
+    transition: opacity 120ms ease;
+  }
+  
+  .theme-dropdown {
+    transition: none;
+  }
+  
+  .menu-item {
+    transition: none;
+  }
 }
 </style>

@@ -27,14 +27,13 @@ const handleBrandClick = () => {
 <style scoped>
 .sidebar-brand {
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: var(--icon-size) 1fr;
   padding-left: var(--left-gutter);
-  padding-right: 16px;
   padding-top: 16px;
   padding-bottom: 16px;
   height: 64px;
+  align-items: center;
   cursor: pointer;
   text-decoration: none;
   color: inherit;
@@ -43,9 +42,8 @@ const handleBrandClick = () => {
 .brand-icon {
   width: var(--icon-size);
   height: var(--icon-size);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: center;
   position: relative;
   transition: filter 200ms ease;
 }
@@ -56,12 +54,12 @@ const handleBrandClick = () => {
   display: block;
 }
 
-/* Subtle logo hover effect */
+/* Subtle logo hover effect on icon only */
 .sidebar-brand:hover .brand-icon {
   filter: brightness(1.1) saturate(1.2);
 }
 
-/* Focus state */
+/* Focus state matches icon bounds */
 .sidebar-brand:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
