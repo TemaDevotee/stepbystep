@@ -33,33 +33,12 @@
     <!-- Utilities Section -->
     <SidebarSection class="sidebar__utilities">
       <SidebarUtility
-        icon="palette"
-        :aria-label="t('switchTheme')"
-        :title="t('switchTheme')"
-      >
-        <ThemeSwitcher />
-      </SidebarUtility>
-      
-      <SidebarUtility
-        icon="language"
-        :aria-label="t('switchLanguage')"
-        :title="t('switchLanguage')"
-      >
-        <LanguageSwitcher />
-      </SidebarUtility>
-      
-      <SidebarUtility
-        :icon="themeStore.isDarkMode ? 'dark_mode' : 'light_mode'"
-        :aria-label="themeStore.isDarkMode ? t('lightMode') : t('darkMode')"
-        :title="themeStore.isDarkMode ? t('lightMode') : t('darkMode')"
-        @click="themeStore.toggleDarkMode()"
-      />
-      
-      <SidebarUtility
-        icon="logout"
-        :aria-label="t('logout')"
-        :title="t('logout')"
-        @click="handleLogout"
+        v-for="utility in utilities"
+        :key="utility.id"
+        :icon="utility.icon"
+        :aria-label="utility.ariaLabel"
+        :title="utility.title"
+        @click="utility.action"
       />
     </SidebarSection>
 
@@ -82,8 +61,6 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { themeStore } from '@/stores/ThemingStore.js'
 import { langStore } from '@/stores/langStore.js'
-import ThemeSwitcher from '@/components/ThemeSwitcher.vue'
-import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
 import SidebarBrand from '@/components/SidebarBrand.vue'
 import SidebarSection from '@/components/SidebarSection.vue'
 import SidebarItem from '@/components/SidebarItem.vue'
@@ -135,6 +112,70 @@ const navItems = [
 const isActiveRoute = (to) => route.path === to || route.path.startsWith(to + '/')
 const t = langStore.t
 
+// Utility actions
+const switchTheme = () => {
+  const currentTheme = document.documentElement.getAttribute('data-theme') || 'classic'
+  const newTheme = currentTheme === 'classic' ? 'sapphire' : 'classic'
+  document.documentElement.setAttribute('data-theme', newTheme)
+  try {
+    localStorage.setItem('app:theme', newTheme)
+  } catch (error) {
+    console.warn('Failed to save theme to localStorage:', error)
+  }
+}
+
+const switchLanguage = () => {
+  const current = langStore.current
+  const newLang = current === 'en' ? 'ru' : 'en'
+  langStore.setLang(newLang)
+}
+
+const toggleDarkMode = () => {
+  themeStore.toggleDarkMode()
+}
+
+const handleLogout = () => {
+  try {
+    localStorage.clear()
+    sessionStorage.clear()
+  } catch (e) {
+    console.warn('Error clearing storage on logout', e)
+  }
+  window.location.assign('/')
+}
+
+// Utilities array - exactly 4 utilities, icon-only
+const utilities = computed(() => [
+  {
+    id: 'theme',
+    icon: 'palette',
+    ariaLabel: t('switchTheme'),
+    title: t('switchTheme'),
+    action: switchTheme
+  },
+  {
+    id: 'language', 
+    icon: 'language',
+    ariaLabel: t('switchLanguage'),
+    title: t('switchLanguage'), 
+    action: switchLanguage
+  },
+  {
+    id: 'darkMode',
+    icon: themeStore.isDarkMode ? 'dark_mode' : 'light_mode',
+    ariaLabel: themeStore.isDarkMode ? t('lightMode') : t('darkMode'),
+    title: themeStore.isDarkMode ? t('lightMode') : t('darkMode'),
+    action: toggleDarkMode
+  },
+  {
+    id: 'logout',
+    icon: 'logout',
+    ariaLabel: t('logout'),
+    title: t('logout'),
+    action: handleLogout
+  }
+])
+
 // Theme-based logo
 const currentLogo = computed(() => {
   const themeId = document.documentElement.getAttribute('data-theme') || 'classic'
@@ -145,17 +186,6 @@ const currentLogo = computed(() => {
   }
   return logoMap[themeId] || logoMap.classic
 })
-
-// Logout handler
-const handleLogout = () => {
-  try {
-    localStorage.clear()
-    sessionStorage.clear()
-  } catch (e) {
-    console.warn('Error clearing storage on logout', e)
-  }
-  window.location.assign('/')
-}
 </script>
 
 <style scoped>
@@ -168,7 +198,6 @@ const handleLogout = () => {
   --left-gutter: calc(var(--icon-axis-x) - var(--icon-size) / 2); /* 24px */
   --row-height: 48px;
   --row-radius: 12px;
-  --hover-pad: 8px;
   
   /* Theme integration */
   --sidebar-bg: var(--c-bg-sidebar, var(--surface));
