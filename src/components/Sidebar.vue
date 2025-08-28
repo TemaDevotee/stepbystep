@@ -1,111 +1,130 @@
 <template>
   <div
-    :class="[{ 'w-20': collapsed, 'w-72': !collapsed, collapsed, animating, collapsing }]"
-    class="sidebar h-full flex flex-col transition-all duration-300 overflow-visible"
-    style="transition: width .30s ease;"
+    ref="sidebarRef"
+    :class="[
+      'sidebar',
+      { 
+        'sidebar--collapsed': collapsed,
+        'sidebar--animating': animating,
+        'sidebar--collapsing': collapsing
+      }
+    ]"
   >
-    <!-- Header: brand + toggle -->
-    <div class="flex items-center justify-between py-4 pl-6 pr-4">
-      <router-link to="/" class="brand" aria-label="Trickster">
-        <span class="brand__logo-box">
-          <img :src="currentLogo" alt="" class="brand__logo" />
-        </span>
-        <span
-          class="label brand-text text-2xl font-bold"
-          v-measure-label
-          :aria-hidden="collapsed ? 'true' : 'false'"
-        >
-          Trickster
-        </span>
-      </router-link>
+    <!-- Brand Section -->
+    <SidebarBrand
+      :collapsed="collapsed"
+      :logo="currentLogo"
+      @expand="expandSidebar"
+      @navigate="navigateToDashboard"
+    />
 
-      <button
-        type="button"
-        @click="toggle"
-        :aria-expanded="(!collapsed).toString()"
-        aria-controls="sidebar-navigation"
-        class="flex items-center justify-center h-10 w-10 rounded-full hover-bg-effect transition-colors"
-        title="Toggle sidebar"
-      >
-        <span class="material-icons">{{ collapsed ? 'menu_open' : 'menu' }}</span>
-      </button>
-    </div>
-
-    <!-- Navigation -->
-    <nav id="sidebar-navigation" class="flex-1 mt-4" aria-label="Primary">
-      <router-link
+    <!-- Navigation Section -->
+    <SidebarSection class="sidebar__navigation" aria-label="Primary navigation">
+      <SidebarItem
         v-for="item in navItems"
         :key="item.to"
-        :to="item.to"
-        :class="[ 'nav-link', { active: isActiveRoute(item.to), collapsed } ]"
-        :title="collapsed ? t(item.key) : ''"
+        :collapsed="collapsed"
+        :item="item"
+        :is-active="isActiveRoute(item.to)"
+        :label="t(item.key)"
+      />
+    </SidebarSection>
+
+    <!-- Utilities Section -->
+    <SidebarSection class="sidebar__utilities">
+      <SidebarUtility
+        icon="palette"
+        :aria-label="t('switchTheme')"
+        :title="t('switchTheme')"
       >
-        <span class="nav-icon material-icons" aria-hidden="true">{{ item.icon }}</span>
-        <span class="label nav-text" v-measure-label :aria-hidden="collapsed ? 'true' : 'false'">
-          {{ t(item.key) }}
-        </span>
-      </router-link>
-    </nav>
+        <ThemeSwitcher />
+      </SidebarUtility>
+      
+      <SidebarUtility
+        icon="language"
+        :aria-label="t('switchLanguage')"
+        :title="t('switchLanguage')"
+      >
+        <LanguageSwitcher />
+      </SidebarUtility>
+      
+      <SidebarUtility
+        :icon="themeStore.isDarkMode ? 'dark_mode' : 'light_mode'"
+        :aria-label="themeStore.isDarkMode ? t('lightMode') : t('darkMode')"
+        :title="themeStore.isDarkMode ? t('lightMode') : t('darkMode')"
+        @click="themeStore.toggleDarkMode()"
+      />
+      
+      <SidebarUtility
+        icon="logout"
+        :aria-label="t('logout')"
+        :title="t('logout')"
+        @click="handleLogout"
+      />
+    </SidebarSection>
 
-    <!-- Footer controls -->
-    <div class="pb-6 px-4 mt-auto">
-      <div class="flex flex-col gap-2" >
-        <div class="footer-row"><ThemeSwitcher /></div>
-        <div class="footer-row"><LanguageSwitcher /></div>
-
-        <!-- Dark / Light toggle -->
-        <div class="footer-row">
-        <button
-          @click="themeStore.toggleDarkMode()"
-          :title="themeStore.isDarkMode ? t('lightMode') : t('darkMode')"
-          class="h-10 w-10 rounded-full hover-bg-effect text-muted transition-colors flex items-center justify-center"
-          type="button"
-        >
-          <span class="material-icons">{{ themeStore.isDarkMode ? 'dark_mode' : 'light_mode' }}</span>
-        </button>
-      </div>
-
-        <!-- Logout -->
-        <div class="footer-row">
-        <button
-          @click="handleLogout"
-          :title="t('logout')"
-          class="h-10 w-10 rounded-full hover-bg-effect text-muted transition-colors flex items-center justify-center"
-          type="button"
-        >
-          <span class="material-icons">logout</span>
-        </button>
-      </div>
-      </div>
-    </div>
+    <!-- Collapse Toggle (only visible when expanded) -->
+    <button
+      v-if="!collapsed"
+      @click="toggle"
+      class="sidebar__toggle"
+      :aria-expanded="(!collapsed).toString()"
+      aria-controls="sidebar-navigation"
+      :title="t('toggleSidebar')"
+    >
+      <span class="material-icons">chevron_left</span>
+    </button>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, computed, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { themeStore } from '@/stores/ThemingStore.js'
 import { langStore } from '@/stores/langStore.js'
 import ThemeSwitcher from '@/components/ThemeSwitcher.vue'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
-import vMeasureLabel from '@/directives/v-measure-label.js'
+import SidebarBrand from '@/components/SidebarBrand.vue'
+import SidebarSection from '@/components/SidebarSection.vue'
+import SidebarItem from '@/components/SidebarItem.vue'
+import SidebarUtility from '@/components/SidebarUtility.vue'
 
-// collapsed state with persistence
+// State management
 const STORAGE_KEY = 'sidebar:collapsed'
-const collapsed = ref(localStorage.getItem(STORAGE_KEY) === '1')
+const collapsed = ref(localStorage.getItem(STORAGE_KEY) === 'true')
 const animating = ref(false)
 const collapsing = ref(false)
+const sidebarRef = ref(null)
+
+// Animation control
 const toggle = () => {
   animating.value = true
-  const wasExpanded = !collapsed.value
-  collapsing.value = wasExpanded // apply fade only when closing
+  collapsing.value = !collapsed.value // true when collapsing
   collapsed.value = !collapsed.value
-  localStorage.setItem(STORAGE_KEY, collapsed.value ? '1' : '0')
-  window.clearTimeout(toggle._t)
-  toggle._t = window.setTimeout(() => { animating.value = false; collapsing.value = false }, 320)
+  localStorage.setItem(STORAGE_KEY, collapsed.value.toString())
+  
+  setTimeout(() => {
+    animating.value = false
+    collapsing.value = false
+  }, 200) // Match CSS transition duration
 }
 
-// nav items (keep your existing set)
+// Brand actions
+const expandSidebar = () => {
+  if (collapsed.value) {
+    collapsed.value = false
+    localStorage.setItem(STORAGE_KEY, 'false')
+  }
+}
+
+const route = useRoute()
+const router = useRouter()
+
+const navigateToDashboard = () => {
+  router.push('/')
+}
+
+// Navigation items
 const navItems = [
   { key: 'chats', to: '/chats', icon: 'chat' },
   { key: 'agents', to: '/agents', icon: 'psychology' },
@@ -113,22 +132,21 @@ const navItems = [
   { key: 'account', to: '/account', icon: 'account_circle' },
 ]
 
-const route = useRoute()
 const isActiveRoute = (to) => route.path === to || route.path.startsWith(to + '/')
 const t = langStore.t
 
-// theme-based logo
+// Theme-based logo
 const currentLogo = computed(() => {
-  const id =
-    document.documentElement.dataset.themeId ||
-    document.documentElement.getAttribute('data-theme') ||
-    'classic'
-  if (id === 'classic') return new URL('../assets/logos/logo-classic.svg', import.meta.url).href
-  if (id === 'sapphire' || id === 'graphite') return new URL('../assets/logos/logo-sapphire.svg', import.meta.url).href
-  return new URL('../assets/logos/logo-classic.svg', import.meta.url).href
+  const themeId = document.documentElement.getAttribute('data-theme') || 'classic'
+  const logoMap = {
+    classic: new URL('../assets/logos/logo-classic.svg', import.meta.url).href,
+    sapphire: new URL('../assets/logos/logo-sapphire.svg', import.meta.url).href,
+    graphite: new URL('../assets/logos/logo-sapphire.svg', import.meta.url).href
+  }
+  return logoMap[themeId] || logoMap.classic
 })
 
-// logout -> clear storage + reload
+// Logout handler
 const handleLogout = () => {
   try {
     localStorage.clear()
@@ -141,128 +159,90 @@ const handleLogout = () => {
 </script>
 
 <style scoped>
+/* CSS Custom Properties for Geometry Tokens */
 .sidebar {
-  background-color: var(--c-bg-sidebar);
-  border-right: 1px solid var(--c-border);
+  --collapsed-width: 72px;
+  --expanded-width: 256px;
+  --icon-size: 24px;
+  --icon-axis-x: calc(var(--collapsed-width) / 2); /* 36px */
+  --left-gutter: calc(var(--icon-axis-x) - var(--icon-size) / 2); /* 24px */
+  --row-height: 48px;
+  --row-radius: 12px;
+  --hover-pad: 8px;
+  
+  /* Theme integration */
+  --sidebar-bg: var(--c-bg-sidebar, var(--surface));
+  --sidebar-border: var(--c-border, color-mix(in oklab, var(--text) 8%, transparent));
+  --hover-bg: var(--c-bg-hover, color-mix(in oklab, var(--accent) 14%, transparent));
+  --active-bg: var(--c-bg-active, color-mix(in oklab, var(--accent) 20%, transparent));
+  --focus-ring: color-mix(in oklab, var(--accent) 60%, transparent);
+  
+  /* Layout */
+  width: var(--expanded-width);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--sidebar-bg);
+  border-right: 1px solid var(--sidebar-border);
+  position: relative;
+  transition: width 200ms ease;
 }
 
-/* Brand row uses same 24px icon column so logo aligns with nav icons */
-.brand {
-  display: grid;
-  grid-template-columns: 24px 1fr;
-  column-gap: 12px;
+.sidebar--collapsed {
+  width: var(--collapsed-width);
+}
+
+/* Navigation and Utilities Sections */
+.sidebar__navigation {
+  flex: 1;
+  padding: 16px 0;
+}
+
+.sidebar__utilities {
+  padding: 16px 0 24px 0;
+  margin-top: auto;
+}
+
+/* Collapse Toggle */
+.sidebar__toggle {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  display: flex;
   align-items: center;
-  padding-left: 0; /* already inside pl-6 wrapper */
-  text-decoration: none;
-}
-.brand__logo-box { width: 24px; height: 20px; display: inline-grid; align-items: center; }
-.brand__logo { height: 20px; width: auto; display: block; }
-
-/* Nav items: 24px icon column + text column; fixed paddings */
-.nav-link {
-  display: grid;
-  grid-template-columns: 24px 1fr;
-  column-gap: 12px;
-  align-items: center;
-  height: 48px;
-  padding-left: 24px;  /* pl-6 */
-  padding-right: 16px; /* pr-4 */
-  margin-bottom: 0.25rem;
-  font-weight: 500;
-  color: var(--c-text-primary);
-  border-radius: 0.75rem;
-  text-decoration: none;
-}
-.nav-link:hover {
-  background-color: var(--c-bg-hover);
-  color: var(--c-text-accent);
-}
-.nav-link.active {
-  background-color: var(--c-bg-active);
-  color: var(--c-text-accent);
-}
-.material-icons { font-size: 20px; line-height: 20px; }
-.nav-icon { justify-self: start; width: 24px; }
-
-/* Collapsing labels with soft fade at right edge */
-.label {
-  display: inline-block;
-  white-space: nowrap;
-  overflow: visible; /* no clipping in static state */
-  width: var(--w, auto);
-  opacity: 1;
-  transition: width .30s ease, opacity .20s ease, margin .30s ease, transform .30s ease;
-  -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 12px), transparent);
-          mask-image: linear-gradient(to left, #000 calc(100% - 12px), transparent);
-}
-.brand-text { margin-left: 0.75rem; } /* matches ml-3 */
-.nav-text { }
-
-/* Collapsed -> hide labels, icons stay put */
-.sidebar.collapsed .label {
-  width: 0;
-  opacity: 0;
-  margin-left: 0;
-  transform: translateX(-4px);
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  color: var(--c-text-muted, var(--text));
+  cursor: pointer;
+  transition: background-color 200ms ease;
 }
 
-/* Footer buttons */
-.hover-bg-effect:hover {
-  background-color: var(--c-bg-hover);
-  color: var(--c-text-accent);
+.sidebar__toggle:hover {
+  background-color: var(--hover-bg);
+  color: var(--c-text-accent, var(--accent));
 }
 
-/* Footer rows use the same 24px icon column so icons align perfectly with nav */
-.footer-row{
-  display:grid;
-  grid-template-columns:24px 1fr;
-  column-gap:12px;
-  align-items:center;
-  height:48px;
-  padding-left:24px; /* pl-6 */
-  padding-right:16px; /* pr-4 */
-}
-/* Make the inner trigger span the row with the same grid & paddings */
-.footer-row :deep(button){
-  width:100%;
-  height:48px;
-  display:grid;
-  grid-template-columns:24px 1fr;
-  column-gap:12px;
-  padding:0; /* outer row already has paddings */
-  background:transparent;
-  border:none;
-}
-.footer-row :deep(.material-icons),
-.footer-row :deep(.material-icons-outlined){
-  font-size:20px;
-  line-height:20px;
-  justify-self:start;
+.sidebar__toggle:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
-
-/* Footer: force full-row hover background and same radius as nav */
-.footer-row :deep(button){
-  width:100%;
-  height:48px;
-  display:grid;
-  grid-template-columns:24px 1fr;
-  column-gap:12px;
-  padding:0 !important;
-  background:transparent;
-  border:none;
-  border-radius: 0.75rem !important; /* match nav */
-}
-.footer-row :deep(button:hover){
-  background-color: var(--c-bg-hover) !important;
-  color: var(--c-text-accent) !important;
-}
-.footer-row :deep(.material-icons),
-.footer-row :deep(.material-icons-outlined){
-  font-size:20px;
-  line-height:20px;
-  justify-self:start;
-  width:24px;
+.sidebar__toggle .material-icons {
+  font-size: 20px;
 }
 
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .sidebar {
+    transition: width 120ms ease;
+  }
+  
+  .sidebar__toggle {
+    transition: background-color 120ms ease;
+  }
+}
 </style>
