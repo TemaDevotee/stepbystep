@@ -3,7 +3,8 @@
     <!-- Button to open the theme menu -->
     <button
       @click="isOpen = !isOpen"
-      class="h-10 w-10 p-2 rounded-full text-muted hover-bg-effect icon-trigger flex items-center justify-center"
+      class="h-10 w-10 p-2 rounded-full text-muted flex items-center justify-center transition-colors duration-200 hover:bg-[var(--c-bg-hover)] hover:text-[var(--accent)]"
+      :title="`Current theme: ${currentTheme}`"
     >
       <span class="material-icons-outlined">palette</span>
     </button>
@@ -19,38 +20,23 @@
     >
       <div
         v-if="isOpen"
-        class="absolute left-0 bottom-12 z-20 w-56 rounded-xl shadow-lg border"
-        :class="[menuClass]"
-        @click.outside="closeOnOutside"
+        class="absolute bottom-0 left-full ml-2 w-32 p-2 rounded-xl shadow-lg menu-bg border border-default z-50"
       >
-        <div class="px-3 py-2 text-xs font-semibold opacity-70">Theme</div>
-
-        <button
-          class="menu-item"
-          :class="{ active: theme === 'system' }"
-          @click="setTheme('system')"
+        <div
+          class="flex items-center px-3 py-2 text-sm font-medium rounded-md cursor-pointer menu-item"
+          :class="{ active: currentTheme === 'classic' }"
+          @click="setTheme('classic')"
         >
-          <span class="material-icons-outlined">settings_suggest</span>
-          System
-        </button>
+          Classic
+        </div>
 
-        <button
-          class="menu-item"
-          :class="{ active: theme === 'light' }"
-          @click="setTheme('light')"
+        <div
+          class="flex items-center px-3 py-2 text-sm font-medium rounded-md cursor-pointer menu-item"
+          :class="{ active: currentTheme === 'sapphire' }"
+          @click="setTheme('sapphire')"
         >
-          <span class="material-icons-outlined">light_mode</span>
-          Light
-        </button>
-
-        <button
-          class="menu-item"
-          :class="{ active: theme === 'dark' }"
-          @click="setTheme('dark')"
-        >
-          <span class="material-icons-outlined">dark_mode</span>
-          Dark
-        </button>
+          Sapphire
+        </div>
       </div>
     </transition>
   </div>
@@ -60,7 +46,7 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 
 const isOpen = ref(false)
-const theme = ref('system')
+const currentTheme = ref('classic')
 
 const container = ref(null)
 const closeOnOutside = (e) => {
@@ -71,34 +57,45 @@ const closeOnOutside = (e) => {
 
 onMounted(() => {
   document.addEventListener('click', closeOnOutside)
+  
+  const documentTheme = document.documentElement.getAttribute('data-theme')
+  if (documentTheme === 'classic' || documentTheme === 'sapphire') {
+    currentTheme.value = documentTheme
+  }
 })
+
 onBeforeUnmount(() => {
   document.removeEventListener('click', closeOnOutside)
 })
 
-function setTheme(mode) {
-  theme.value = mode
-  document.documentElement.classList.remove('light', 'dark')
-  if (mode === 'light') document.documentElement.classList.add('light')
-  if (mode === 'dark') document.documentElement.classList.add('dark')
+function setTheme(themeName) {
+  if (themeName !== 'classic' && themeName !== 'sapphire') {
+    console.warn('Invalid theme name:', themeName)
+    return
+  }
+  
+  currentTheme.value = themeName
+  document.documentElement.setAttribute('data-theme', themeName)
+  
+  try {
+    localStorage.setItem('app:theme', themeName)
+  } catch (error) {
+    console.warn('Failed to save theme to localStorage:', error)
+  }
+  
   isOpen.value = false
+  console.log('Theme switched to:', themeName)
 }
-
-const menuClass =
-  'bg-[var(--c-panel)] border-[var(--c-border)] text-[var(--c-text-primary)]'
 </script>
 
 <style scoped>
+.menu-bg {
+  background-color: var(--c-bg-secondary);
+}
+.border-default {
+  border-color: var(--c-border);
+}
 .menu-item {
-  width: 100%;
-  height: 40px;
-  display: grid;
-  grid-template-columns: 24px 1fr;
-  column-gap: 10px;
-  align-items: center;
-  padding: 0 12px;
-  border-radius: 0.75rem;
-  background: transparent;
   color: var(--c-text-primary);
 }
 .menu-item:hover {
@@ -107,9 +104,5 @@ const menuClass =
 }
 .menu-item.active {
   color: var(--c-text-brand);
-}
-.hover-bg-effect:hover {
-  background-color: var(--c-bg-hover);
-  color: var(--c-text-accent);
 }
 </style>

@@ -3,7 +3,7 @@
     <!-- Trigger button for language menu -->
     <button
       @click="toggle"
-      class="h-10 w-10 p-2 rounded-full text-muted flex items-center justify-center transition-colors duration-200 hover:bg-[var(--c-bg-hover)] hover:text-[var(--c-text-accent)]"
+      class="h-10 w-10 p-2 rounded-full text-muted flex items-center justify-center transition-colors duration-200 hover:bg-[var(--c-bg-hover)] hover:text-[var(--accent)]"
     >
       <span class="material-icons-outlined">language</span>
     </button>
@@ -19,7 +19,7 @@
     >
       <div
         v-if="isOpen"
-        class="absolute bottom-full mb-1 left-1/2 transform -translate-x-[55%] w-32 p-2 rounded-xl shadow-lg menu-bg border border-default z-50"
+        class="absolute bottom-0 left-full ml-2 w-32 p-2 rounded-xl shadow-lg menu-bg border border-default z-50"
       >
         <div
           @click="setLang('en')"
