@@ -80,6 +80,7 @@ const collapsing = ref(false)
 const sidebarRef = ref(null)
 
 // Animation control
+const TOGGLE_MS = 240 // синхронизировано с CSS
 const toggle = () => {
   animating.value = true
   collapsing.value = !collapsed.value // true when collapsing
@@ -89,7 +90,7 @@ const toggle = () => {
   setTimeout(() => {
     animating.value = false
     collapsing.value = false
-  }, 200) // Match CSS transition duration
+  }, TOGGLE_MS)
 }
 
 // Brand actions
@@ -174,10 +175,18 @@ const currentLogo = computed(() => {
 </script>
 
 <style scoped>
-/* CSS Custom Properties for Geometry Tokens */
+/* ===============================
+   Geometry tokens for the sidebar
+   =============================== */
 .sidebar {
+  /* базовые размеры */
   --collapsed-width: 72px;
   --expanded-width: 256px;
+
+  /* управляемая ширина — только через эту переменную */
+  --sb-w: var(--expanded-width);
+
+  /* размеры и позиционирование иконок/строк */
   --icon-size: 24px;
   --icon-axis-x: calc(var(--collapsed-width) / 2); /* 36px */
   --left-gutter: calc(var(--icon-axis-x) - var(--icon-size) / 2); /* 24px */
@@ -185,30 +194,35 @@ const currentLogo = computed(() => {
   --row-radius: 12px;
   --dropdown-gap: 10px;
   --radius-round: 999px;
-  
+
   /* Theme integration */
   --sidebar-bg: var(--c-bg-sidebar, var(--surface));
   --sidebar-border: var(--c-border, color-mix(in oklab, var(--text) 8%, transparent));
   --hover-bg: var(--c-bg-hover, color-mix(in oklab, var(--accent) 14%, transparent));
   --active-bg: var(--c-bg-active, color-mix(in oklab, var(--accent) 20%, transparent));
   --focus-ring: color-mix(in oklab, var(--accent) 60%, transparent);
-  
-  /* Layout */
-  width: var(--expanded-width);
-  min-width: var(--expanded-width);
+
+  /* Layout (ширина связана с переменной -> анимируется в обе стороны) */
+  width: var(--sb-w);
+  /* ВАЖНО: min-width не должен меняться — иначе «ломает» анимацию на раскрытие.
+     Делаем нижнюю границу равной collapsed, чтобы не мешала width анимироваться. */
+  min-width: var(--collapsed-width);
+
   height: 100%;
   display: flex;
   flex-direction: column;
   background-color: var(--sidebar-bg);
   border-right: 1px solid var(--sidebar-border);
   position: relative;
-  transition: width 200ms ease;
+
+  /* плавное раскрытие */
+  transition: width 240ms cubic-bezier(.2,.8,.2,1);
+  will-change: width;
+  overflow: hidden;
 }
 
-.sidebar--collapsed {
-  width: var(--collapsed-width);
-  min-width: var(--collapsed-width);
-}
+/* переключение состояния — только значение переменной */
+.sidebar--collapsed { --sb-w: var(--collapsed-width); }
 
 /* Navigation and Utilities Sections */
 .sidebar__navigation {

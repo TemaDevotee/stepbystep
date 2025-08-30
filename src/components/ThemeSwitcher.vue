@@ -141,23 +141,36 @@ onBeforeUnmount(() => {
   border: none;
   color: var(--c-text-muted, var(--text));
   transition: color 200ms ease;
+
+  /* позволяем подложке выходить за границы, не меняя лэйаут */
+  overflow: visible;
 }
 
 .icon .material-icons-outlined {
   font-size: 20px;
   line-height: 20px;
+  position: relative;
+  z-index: 1;        /* иконка над подложкой */
+  pointer-events: none;
 }
 
-/* Icon-sized circular hover overlay */
+/* Enlarged circular hover overlay + extended hit-area (matches brand) */
 .icon::before {
   content: "";
   position: absolute;
-  inset: 0;
+  left: 50%;
+  top: 50%;
+  width: calc(var(--icon-size) + 12px);  /* +6px вокруг — как у бренда */
+  height: calc(var(--icon-size) + 12px);
+  transform: translate(-50%, -50%);
   border-radius: var(--radius-round, 999px);
   background: var(--hover-bg);
   opacity: 0;
   transition: opacity 150ms ease;
-  pointer-events: none;
+
+  /* расширяем реальную hit-area, клики доходят до кнопки */
+  pointer-events: auto;
+  z-index: 0;           /* под иконкой */
 }
 
 .icon:hover::before,

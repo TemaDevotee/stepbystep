@@ -48,6 +48,7 @@ defineEmits(['click'])
   place-items: center;
   pointer-events: auto; /* Only the icon is clickable */
   position: relative;
+  overflow: visible; /* allow hover circle to extend like brand */
   cursor: pointer;
   background: transparent;
   border: none;
@@ -58,18 +59,26 @@ defineEmits(['click'])
 .icon .material-icons {
   font-size: 20px;
   line-height: 20px;
+  position: relative;
+  z-index: 1;        /* icon above hover circle */
+  pointer-events: none;
 }
 
-/* Icon-sized circular hover overlay */
+/* Circular hover overlay with enlarged hit-area (matches brand) */
 .icon::before {
   content: "";
   position: absolute;
-  inset: 0; /* Same as icon rect */
+  left: 50%;
+  top: 50%;
+  width: calc(var(--icon-size) + 12px);  /* +6px all around, same as brand */
+  height: calc(var(--icon-size) + 12px);
+  transform: translate(-50%, -50%);
   border-radius: var(--radius-round, 999px);
   background: var(--hover-bg);
   opacity: 0;
   transition: opacity 150ms ease;
-  pointer-events: none; /* overlay only */
+  pointer-events: auto; /* extend hover/click within the circle */
+  z-index: 0;           /* under the icon glyph */
 }
 
 .icon:hover::before,
